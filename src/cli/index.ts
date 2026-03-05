@@ -270,4 +270,22 @@ program
     }
   });
 
+program
+  .command('dashboard')
+  .description('Launch web dashboard to browse sessions and knowledge')
+  .option('--port <port>', 'Port number', '3847')
+  .action(async (options: { port: string }) => {
+    try {
+      const { startDashboard } = await import('../dashboard/server.js');
+      await startDashboard(parseInt(options.port));
+    } catch (error) {
+      if (program.opts().verbose) {
+        console.error(error);
+      } else {
+        console.error(`Error: ${error instanceof Error ? error.message : error}`);
+      }
+      process.exit(1);
+    }
+  });
+
 program.parse();
