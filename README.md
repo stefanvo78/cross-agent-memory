@@ -2,7 +2,7 @@
 
 > Seamlessly switch between AI coding agents without losing context.
 
-A local-first tool that captures session state from different AI coding agents (GitHub Copilot CLI, Claude Code, and more) and makes it available to any agent via MCP, so you can pick up exactly where you left off — even with a different tool.
+A local-first tool that captures session state from different AI coding agents (GitHub Copilot CLI, Claude Code, Gemini CLI, and more) and makes it available to any agent via MCP, so you can pick up exactly where you left off — even with a different tool.
 
 ## The Problem
 
@@ -15,44 +15,97 @@ AI coding agents forget everything when you switch tools. If Copilot's tokens ru
 1. **Stop Hooks** — Automatically capture session summaries when an agent session ends
 2. **Unified Vector DB** — Single SQLite + sqlite-vec database storing all sessions across all agents and projects
 3. **MCP Server** — Any agent can query the shared memory via standard MCP protocol to get context, search history, and receive a "handoff" prompt
+4. **Auto-Summarization** — Heuristic extraction of objectives, decisions, files, errors, and next steps from raw transcripts
+5. **Web Dashboard** — Browse sessions, knowledge, and project stats at `localhost:3847`
 
 ## Quick Start
 
 ```bash
 npm install -g cross-agent-memory
 
-# One-time setup: installs hooks for your agents
-cross-agent-memory setup
+# Initialize: download embedding model + create database
+cross-agent-memory init
+
+# Set up hooks for your agents
+cross-agent-memory setup copilot --project /path/to/project
+cross-agent-memory setup claude --project /path/to/project
+cross-agent-memory setup gemini --project /path/to/project
 
 # Start the MCP server (agents connect automatically)
 cross-agent-memory serve
+
+# Or manually ingest a session
+cross-agent-memory ingest copilot
+cross-agent-memory ingest claude
+cross-agent-memory ingest gemini
+
+# View status
+cross-agent-memory status
+
+# Launch the web dashboard
+cross-agent-memory dashboard
 ```
 
 ## How It Works
 
 ```
 Agent A session ends → Stop Hook fires → Ingest script reads session state
-→ Embeds summary → Stores in ~/.agent-memory/memory.db
+→ Summarizes & embeds → Stores in ~/.agent-memory/memory.db
 
 Agent B starts → MCP Server is running → Agent calls get_handoff()
 → Gets: "Last session (Copilot) completed X. Remaining: Y, Z."
 ```
 
+## MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_handoff` | Get complete context from the last agent session for seamless continuation |
+| `search_memory` | Semantic + keyword search across all sessions and knowledge |
+| `store_knowledge` | Save important decisions, patterns, or gotchas |
+| `get_project_context` | Get all knowledge and recent sessions for a project |
+
 ## Supported Agents
 
 - [x] GitHub Copilot CLI
 - [x] Claude Code
-- [ ] Gemini CLI (planned)
+- [x] Gemini CLI
 - [ ] ChatGPT/Codex (planned)
 - [ ] Cursor (planned)
 
+## Configuration
+
+Config file at `~/.agent-memory/config.json`:
+
+```json
+{
+  "dbPath": "~/.agent-memory/memory.db",
+  "embeddingModel": "Xenova/all-MiniLM-L6-v2",
+  "embeddingDimensions": 384,
+  "autoEmbed": true,
+  "logLevel": "normal"
+}
+```
+
 ## Tech Stack
 
-- **Language:** TypeScript + Node.js
-- **Database:** SQLite + [sqlite-vec](https://github.com/asg017/sqlite-vec) (vector search)
+- **Language:** TypeScript + Node.js (ESM)
+- **Database:** SQLite + [sqlite-vec](https://github.com/asg017/sqlite-vec) (vector search + FTS5)
 - **Embeddings:** Local ONNX (all-MiniLM-L6-v2, 384 dims, ~23MB, no API key)
 - **Protocol:** [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
-- **Testing:** Vitest
+- **Testing:** Vitest (274 tests)
+- **CI:** GitHub Actions (test + build + typecheck on Node 20/22)
+
+## Development
+
+```bash
+git clone https://github.com/stefanvo78/cross-agent-memory
+cd cross-agent-memory
+npm install
+npm test          # Run all tests
+npm run build     # Build to dist/
+npm link          # Global install for development
+```
 
 ## License
 
