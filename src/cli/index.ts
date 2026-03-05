@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { CopilotIngester } from '../ingest/copilot.js';
 import { ClaudeIngester } from '../ingest/claude.js';
+import { GeminiIngester } from '../ingest/gemini.js';
 import { ingestSession } from '../ingest/pipeline.js';
 import { getDb, closeDb } from '../db/connection.js';
 import { SessionStore } from '../db/sessions.js';
@@ -14,8 +15,10 @@ function getIngester(agent: string): AgentIngester {
       return new CopilotIngester();
     case 'claude':
       return new ClaudeIngester();
+    case 'gemini':
+      return new GeminiIngester();
     default:
-      throw new Error(`Unknown agent: ${agent}. Supported: copilot, claude`);
+      throw new Error(`Unknown agent: ${agent}. Supported: copilot, claude, gemini`);
   }
 }
 
@@ -71,6 +74,16 @@ program
           const encoded = encodeProjectPath(cwd);
           const sessionFile = join(homedir(), '.claude', 'projects', encoded, `${options.sessionId}.jsonl`);
           sessionData = await claude.parseSession(sessionFile);
+        } else if (agent === 'gemini') {
+          // Gemini sessions are JSON files in the chats directory
+          const gemini = ingester as GeminiIngester;
+          const cwd = options.cwd ?? process.cwd();
+          const { join } = await import('node:path');
+          const { homedir } = await import('node:os');
+          const { getProjectHash } = await import('../ingest/gemini.js');
+          const hash = getProjectHash(cwd);
+          const sessionFile = join(homedir(), '.gemini', 'tmp', hash, 'chats', `${options.sessionId}.json`);
+          sessionData = await gemini.parseSession(sessionFile);
         } else {
           // Copilot sessions are directories
           const copilot = ingester as CopilotIngester;
@@ -163,7 +176,7 @@ program
     const { join } = await import('node:path');
 
     const projectDir = options?.project ?? process.cwd();
-    const agents = agent ? [agent] : ['copilot', 'claude', 'mcp'];
+    const agents = agent ? [agent] : ['copilot', 'claude', 'gemini', 'mcp'];
 
     for (const a of agents) {
       switch (a) {
@@ -202,6 +215,24 @@ program
           console.log(`✓ Updated ${join('.claude', 'settings.json')}`);
           break;
         }
+        case 'gemini': {
+          const { homedir } = await import('node:os');
+          const geminiSettingsDir = join(homedir(), '.gemini');
+          mkdirSync(geminiSettingsDir, { recursive: true });
+          const geminiSettingsPath = join(geminiSettingsDir, 'settings.json');
+          let geminiSettings: Record<string, unknown> = {};
+          if (existsSync(geminiSettingsPath)) {
+            geminiSettings = JSON.parse(readFileSync(geminiSettingsPath, 'utf-8'));
+          }
+          (geminiSettings as Record<string, unknown>).hooks = {
+            SessionEnd: {
+              command: 'cross-agent-memory ingest gemini --cwd ' + projectDir,
+            },
+          };
+          writeFileSync(geminiSettingsPath, JSON.stringify(geminiSettings, null, 2) + '\n');
+          console.log(`✓ Updated ${join('~/.gemini', 'settings.json')}`);
+          break;
+        }
         case 'mcp': {
           console.log('\nMCP Server Configuration:');
           console.log('\n  Copilot CLI (.vscode/mcp.json):');
@@ -218,7 +249,7 @@ program
           break;
         }
         default:
-          console.error(`Unknown agent: ${a}. Supported: copilot, claude, mcp`);
+          console.error(`Unknown agent: ${a}. Supported: copilot, claude, gemini, mcp`);
           process.exit(1);
       }
     }
