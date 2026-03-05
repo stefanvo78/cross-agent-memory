@@ -8,7 +8,7 @@ export class VectorStore {
     this.db = db;
   }
 
-  insertSessionChunk(sessionId: string, chunkText: string, embedding: Float32Array): number {
+  insertSessionChunk(sessionId: string, chunkText: string, embedding: Float32Array | null): number {
     // Insert metadata
     const metaResult = this.db.prepare(
       'INSERT INTO session_chunk_meta (session_id, chunk_text) VALUES (?, ?)'
@@ -16,11 +16,13 @@ export class VectorStore {
 
     const id = Number(metaResult.lastInsertRowid);
 
-    // Insert vector (rowid must match session_chunk_meta.id)
-    // vec0 virtual tables require BigInt for rowid values
-    this.db.prepare(
-      'INSERT INTO session_chunks (rowid, embedding) VALUES (?, ?)'
-    ).run(BigInt(id), Buffer.from(embedding.buffer));
+    // Insert vector only if embedding is available
+    if (embedding) {
+      // vec0 virtual tables require BigInt for rowid values
+      this.db.prepare(
+        'INSERT INTO session_chunks (rowid, embedding) VALUES (?, ?)'
+      ).run(BigInt(id), Buffer.from(embedding.buffer));
+    }
 
     return id;
   }
@@ -112,6 +114,60 @@ export class VectorStore {
     }
 
     return this.db.prepare(sql).all(...params) as Array<{ id: number; distance: number }>;
+  }
+
+  searchSessionsByText(query: string, limit = 10, projectId?: string): SearchResult[] {
+    // Fallback search for text-only chunks (no embedding) using LIKE
+    let sql: string;
+    let params: unknown[];
+
+    if (projectId) {
+      sql = `
+        SELECT
+          m.chunk_text,
+          m.session_id,
+          s.agent,
+          s.ended_at
+        FROM session_chunk_meta m
+        JOIN sessions s ON s.id = m.session_id
+        LEFT JOIN session_chunks sc ON sc.rowid = m.id
+        WHERE sc.rowid IS NULL
+          AND m.chunk_text LIKE ?
+          AND s.project_id = ?
+        LIMIT ?
+      `;
+      params = [`%${query}%`, projectId, limit];
+    } else {
+      sql = `
+        SELECT
+          m.chunk_text,
+          m.session_id,
+          s.agent,
+          s.ended_at
+        FROM session_chunk_meta m
+        JOIN sessions s ON s.id = m.session_id
+        LEFT JOIN session_chunks sc ON sc.rowid = m.id
+        WHERE sc.rowid IS NULL
+          AND m.chunk_text LIKE ?
+        LIMIT ?
+      `;
+      params = [`%${query}%`, limit];
+    }
+
+    const rows = this.db.prepare(sql).all(...params) as Array<{
+      chunk_text: string;
+      session_id: string;
+      agent: string;
+      ended_at: string;
+    }>;
+
+    return rows.map((r) => ({
+      sessionId: r.session_id,
+      agent: r.agent as AgentType,
+      chunkText: r.chunk_text,
+      similarityScore: 0, // text search, no similarity score
+      timestamp: r.ended_at,
+    }));
   }
 
   sessionChunkCount(): number {

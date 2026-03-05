@@ -5,6 +5,7 @@ import { ingestSession } from '../ingest/pipeline.js';
 import { getDb, closeDb } from '../db/connection.js';
 import { SessionStore } from '../db/sessions.js';
 import { VectorStore } from '../db/vectors.js';
+import { OnnxEmbeddingEngine } from '../embedding/engine.js';
 import type { AgentIngester, AgentType } from '../types.js';
 
 function getIngester(agent: string): AgentIngester {
@@ -21,7 +22,33 @@ function getIngester(agent: string): AgentIngester {
 const program = new Command()
   .name('cross-agent-memory')
   .description('Seamlessly switch between AI coding agents without losing context')
-  .version('0.1.0');
+  .version('0.1.0')
+  .option('--verbose', 'Show full stack traces on error');
+
+program
+  .command('init')
+  .description('Initialize: download embedding model and create database')
+  .action(async () => {
+    try {
+      console.log('Initializing cross-agent-memory...');
+      console.log('Downloading embedding model (all-MiniLM-L6-v2, ~23MB)...');
+      const engine = new OnnxEmbeddingEngine();
+      await engine.embed('test initialization');
+      console.log('✓ Embedding model ready');
+
+      const db = getDb();
+      closeDb();
+      console.log('✓ Database created at ~/.agent-memory/memory.db');
+      console.log('\nReady! Configure your agents with: cross-agent-memory setup <agent>');
+    } catch (error) {
+      if (program.opts().verbose) {
+        console.error(error);
+      } else {
+        console.error(`Error: ${error instanceof Error ? error.message : error}`);
+      }
+      process.exit(1);
+    }
+  });
 
 program
   .command('ingest <agent>')
@@ -69,8 +96,12 @@ program
       console.log(`  Project:     ${result.projectId}`);
       console.log(`  Chunks:      ${result.chunksStored}`);
       console.log(`  Summary:     ${sessionData.summary.slice(0, 100)}${sessionData.summary.length > 100 ? '...' : ''}`);
-    } catch (err) {
-      console.error('Ingest failed:', (err as Error).message);
+    } catch (error) {
+      if (program.opts().verbose) {
+        console.error(error);
+      } else {
+        console.error(`Error: ${error instanceof Error ? error.message : error}`);
+      }
       process.exit(1);
     } finally {
       closeDb();
@@ -92,8 +123,12 @@ program
       console.log('cross-agent-memory status');
       console.log(`  Sessions:  ${sessionCount}`);
       console.log(`  Chunks:    ${chunkCount}`);
-    } catch (err) {
-      console.error('Status failed:', (err as Error).message);
+    } catch (error) {
+      if (program.opts().verbose) {
+        console.error(error);
+      } else {
+        console.error(`Error: ${error instanceof Error ? error.message : error}`);
+      }
       process.exit(1);
     } finally {
       closeDb();
@@ -108,8 +143,12 @@ program
     try {
       const { startServer } = await import('../mcp/server.js');
       await startServer({ debug: options.debug });
-    } catch (err) {
-      process.stderr.write(`MCP server failed: ${(err as Error).message}\n`);
+    } catch (error) {
+      if (program.opts().verbose) {
+        console.error(error);
+      } else {
+        console.error(`Error: ${error instanceof Error ? error.message : error}`);
+      }
       process.exit(1);
     }
   });
@@ -119,6 +158,7 @@ program
   .description('Install hooks and MCP config for an agent')
   .option('--project <path>', 'Project directory')
   .action(async (agent?: string, options?: { project?: string }) => {
+    try {
     const { mkdirSync, writeFileSync, existsSync, readFileSync } = await import('node:fs');
     const { join } = await import('node:path');
 
@@ -181,6 +221,14 @@ program
           console.error(`Unknown agent: ${a}. Supported: copilot, claude, mcp`);
           process.exit(1);
       }
+    }
+    } catch (error) {
+      if (program.opts().verbose) {
+        console.error(error);
+      } else {
+        console.error(`Error: ${error instanceof Error ? error.message : error}`);
+      }
+      process.exit(1);
     }
   });
 
