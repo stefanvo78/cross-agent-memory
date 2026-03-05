@@ -5,4 +5,6 @@ export { VectorStore } from './db/vectors.js';
 export { OnnxEmbeddingEngine, EMBEDDING_DIMENSIONS, validateEmbedding } from './embedding/engine.js';
 export { chunkText } from './embedding/chunker.js';
 export { detectProject, normalizeGitRemote } from './ingest/project-detector.js';
+export { CopilotIngester } from './ingest/copilot.js';
+export { ingestSession } from './ingest/pipeline.js';
 export type * from './types.js';
