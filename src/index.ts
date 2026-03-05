@@ -8,4 +8,6 @@ export { detectProject, normalizeGitRemote } from './ingest/project-detector.js'
 export { CopilotIngester } from './ingest/copilot.js';
 export { ClaudeIngester, encodeProjectPath, decodeProjectPath } from './ingest/claude.js';
 export { ingestSession } from './ingest/pipeline.js';
+export { startServer } from './mcp/server.js';
+export { getHandoff, searchMemory, storeKnowledge, getProjectContext } from './mcp/tools.js';
 export type * from './types.js';

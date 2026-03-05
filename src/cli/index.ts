@@ -101,4 +101,88 @@ program
     }
   });
 
+program
+  .command('serve')
+  .description('Start MCP server')
+  .option('--debug', 'Enable debug logging')
+  .action(async (options: { debug?: boolean }) => {
+    try {
+      const { startServer } = await import('../mcp/server.js');
+      await startServer({ debug: options.debug });
+    } catch (err) {
+      process.stderr.write(`MCP server failed: ${(err as Error).message}\n`);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('setup [agent]')
+  .description('Install hooks and MCP config for an agent')
+  .option('--project <path>', 'Project directory')
+  .action(async (agent?: string, options?: { project?: string }) => {
+    const { mkdirSync, writeFileSync, existsSync, readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+
+    const projectDir = options?.project ?? process.cwd();
+    const agents = agent ? [agent] : ['copilot', 'claude', 'mcp'];
+
+    for (const a of agents) {
+      switch (a) {
+        case 'copilot': {
+          const hooksDir = join(projectDir, '.github', 'hooks');
+          mkdirSync(hooksDir, { recursive: true });
+          const hooksConfig = {
+            hooks: {
+              sessionEnd: {
+                command: 'cross-agent-memory',
+                args: ['ingest', 'copilot', '--cwd', projectDir],
+              },
+            },
+          };
+          writeFileSync(
+            join(hooksDir, 'hooks.json'),
+            JSON.stringify(hooksConfig, null, 2) + '\n',
+          );
+          console.log(`✓ Created ${join('.github', 'hooks', 'hooks.json')}`);
+          break;
+        }
+        case 'claude': {
+          const claudeDir = join(projectDir, '.claude');
+          mkdirSync(claudeDir, { recursive: true });
+          const settingsPath = join(claudeDir, 'settings.json');
+          let settings: Record<string, unknown> = {};
+          if (existsSync(settingsPath)) {
+            settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+          }
+          (settings as Record<string, unknown>).hooks = {
+            SessionEnd: {
+              command: 'cross-agent-memory ingest claude --cwd ' + projectDir,
+            },
+          };
+          writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+          console.log(`✓ Updated ${join('.claude', 'settings.json')}`);
+          break;
+        }
+        case 'mcp': {
+          console.log('\nMCP Server Configuration:');
+          console.log('\n  Copilot CLI (.vscode/mcp.json):');
+          console.log('  ' + JSON.stringify({
+            servers: {
+              'cross-agent-memory': {
+                command: 'cross-agent-memory',
+                args: ['serve'],
+              },
+            },
+          }, null, 2).split('\n').join('\n  '));
+          console.log('\n  Claude Code:');
+          console.log('  claude mcp add cross-agent-memory -- cross-agent-memory serve');
+          break;
+        }
+        default:
+          console.error(`Unknown agent: ${a}. Supported: copilot, claude, mcp`);
+          process.exit(1);
+      }
+    }
+  });
+
 program.parse();
