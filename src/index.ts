@@ -10,4 +10,6 @@ export { ClaudeIngester, encodeProjectPath, decodeProjectPath } from './ingest/c
 export { ingestSession } from './ingest/pipeline.js';
 export { startServer } from './mcp/server.js';
 export { getHandoff, searchMemory, storeKnowledge, getProjectContext } from './mcp/tools.js';
+export { loadConfig, saveConfig } from './config.js';
+export type { AgentMemoryConfig } from './config.js';
 export type * from './types.js';

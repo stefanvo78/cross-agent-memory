@@ -8,7 +8,7 @@ export class VectorStore {
     this.db = db;
   }
 
-  insertSessionChunk(sessionId: string, chunkText: string, embedding: Float32Array): number {
+  insertSessionChunk(sessionId: string, chunkText: string, embedding: Float32Array | null): number {
     // Insert metadata
     const metaResult = this.db.prepare(
       'INSERT INTO session_chunk_meta (session_id, chunk_text) VALUES (?, ?)'
@@ -16,11 +16,13 @@ export class VectorStore {
 
     const id = Number(metaResult.lastInsertRowid);
 
-    // Insert vector (rowid must match session_chunk_meta.id)
-    // vec0 virtual tables require BigInt for rowid values
-    this.db.prepare(
-      'INSERT INTO session_chunks (rowid, embedding) VALUES (?, ?)'
-    ).run(BigInt(id), Buffer.from(embedding.buffer));
+    // Insert vector only if embedding is available
+    if (embedding) {
+      // vec0 virtual tables require BigInt for rowid values
+      this.db.prepare(
+        'INSERT INTO session_chunks (rowid, embedding) VALUES (?, ?)'
+      ).run(BigInt(id), Buffer.from(embedding.buffer));
+    }
 
     return id;
   }

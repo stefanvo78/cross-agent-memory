@@ -34,8 +34,17 @@ export async function ingestSession(sessionData: SessionData): Promise<IngestRes
     return { sessionId: sessionData.id, projectId: sessionData.projectId, chunksStored: 0 };
   }
 
-  // 3. Embed and store chunks
-  const embeddings = await engine.embedBatch(textsToEmbed);
+  // 3. Embed and store chunks (with fallback if embedding fails)
+  let embeddings: (Float32Array | null)[];
+  try {
+    embeddings = await engine.embedBatch(textsToEmbed);
+  } catch (err) {
+    console.warn(
+      `Warning: Embedding failed, storing chunks as text-only: ${(err as Error).message}`
+    );
+    embeddings = textsToEmbed.map(() => null);
+  }
+
   for (let i = 0; i < textsToEmbed.length; i++) {
     vectors.insertSessionChunk(sessionData.id, textsToEmbed[i], embeddings[i]);
   }
