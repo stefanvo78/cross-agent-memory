@@ -64,6 +64,13 @@ program
       let sessionData;
 
       if (options.sessionId) {
+        // Sanitize sessionId to prevent path traversal
+        const { basename } = await import('node:path');
+        const sanitizedId = basename(options.sessionId);
+        if (sanitizedId !== options.sessionId || sanitizedId.includes('..')) {
+          throw new Error('Invalid session ID: must not contain path separators');
+        }
+
         if (agent === 'claude') {
           // Claude sessions are JSONL files in the project directory
           const claude = ingester as ClaudeIngester;
@@ -72,7 +79,7 @@ program
           const { homedir } = await import('node:os');
           const { encodeProjectPath } = await import('../ingest/claude.js');
           const encoded = encodeProjectPath(cwd);
-          const sessionFile = join(homedir(), '.claude', 'projects', encoded, `${options.sessionId}.jsonl`);
+          const sessionFile = join(homedir(), '.claude', 'projects', encoded, `${sanitizedId}.jsonl`);
           sessionData = await claude.parseSession(sessionFile);
         } else if (agent === 'gemini') {
           // Gemini sessions are JSON files in the chats directory
@@ -82,14 +89,14 @@ program
           const { homedir } = await import('node:os');
           const { getProjectHash } = await import('../ingest/gemini.js');
           const hash = getProjectHash(cwd);
-          const sessionFile = join(homedir(), '.gemini', 'tmp', hash, 'chats', `${options.sessionId}.json`);
+          const sessionFile = join(homedir(), '.gemini', 'tmp', hash, 'chats', `${sanitizedId}.json`);
           sessionData = await gemini.parseSession(sessionFile);
         } else {
           // Copilot sessions are directories
           const copilot = ingester as CopilotIngester;
           const { join } = await import('node:path');
           const { homedir } = await import('node:os');
-          const sessionDir = join(homedir(), '.copilot', 'session-state', options.sessionId);
+          const sessionDir = join(homedir(), '.copilot', 'session-state', sanitizedId);
           sessionData = await copilot.parseSession(sessionDir);
         }
       } else {

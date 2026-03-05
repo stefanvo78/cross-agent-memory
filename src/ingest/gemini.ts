@@ -54,15 +54,16 @@ export class GeminiIngester implements AgentIngester {
 
     const sessionId = session.sessionId || basename(sessionPath, '.json');
 
-    // Extract messages by type
-    const userMessages = session.messages.filter((m) => m.type === 'user');
-    const assistantMessages = session.messages.filter((m) => m.type === 'assistant');
+    // Extract messages by type (defensive: handle missing messages)
+    const messages = session.messages ?? [];
+    const userMessages = messages.filter((m) => m.type === 'user');
+    const assistantMessages = messages.filter((m) => m.type === 'assistant');
 
     // Build summary
     const summary = session.summary || buildSummary(userMessages, assistantMessages);
 
     // Extract file modifications from tool messages
-    const filesModified = extractFilesModified(session.messages);
+    const filesModified = extractFilesModified(messages);
 
     // Extract key decisions from assistant messages
     const keyDecisions = extractKeyDecisions(assistantMessages);
@@ -214,7 +215,7 @@ function buildFullText(session: GeminiSession): string {
   if (session.summary) {
     parts.push(`Summary: ${session.summary}`);
   }
-  for (const msg of session.messages) {
+  for (const msg of session.messages ?? []) {
     const role =
       msg.type === 'user'
         ? 'User'
