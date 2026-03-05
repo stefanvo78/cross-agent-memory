@@ -17,17 +17,19 @@ export class VectorStore {
     const id = Number(metaResult.lastInsertRowid);
 
     // Insert vector (rowid must match session_chunk_meta.id)
+    // vec0 virtual tables require BigInt for rowid values
     this.db.prepare(
       'INSERT INTO session_chunks (rowid, embedding) VALUES (?, ?)'
-    ).run(id, Buffer.from(embedding.buffer));
+    ).run(BigInt(id), Buffer.from(embedding.buffer));
 
     return id;
   }
 
   insertKnowledgeVector(knowledgeId: number, embedding: Float32Array): void {
+    // vec0 virtual tables require BigInt for rowid values
     this.db.prepare(
       'INSERT INTO knowledge_vec (rowid, embedding) VALUES (?, ?)'
-    ).run(knowledgeId, Buffer.from(embedding.buffer));
+    ).run(BigInt(knowledgeId), Buffer.from(embedding.buffer));
   }
 
   searchSessions(queryEmbedding: Float32Array, limit = 10, projectId?: string): SearchResult[] {
