@@ -32,6 +32,13 @@ export async function ingestSession(sessionData: SessionData): Promise<IngestRes
     if (extracted.filesModified.length > 0 && sessionData.filesModified.length === 0) {
       sessionData.filesModified = extracted.filesModified;
     }
+    // Merge created files into filesModified (no separate field in schema)
+    if (extracted.filesCreated.length > 0) {
+      const existing = new Set(sessionData.filesModified);
+      for (const f of extracted.filesCreated) {
+        if (!existing.has(f)) sessionData.filesModified.push(f);
+      }
+    }
     if (extracted.nextSteps.length > 0 && sessionData.tasksPending.length === 0) {
       sessionData.tasksPending = extracted.nextSteps;
     }
