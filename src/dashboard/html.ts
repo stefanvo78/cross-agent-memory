@@ -83,7 +83,8 @@ function switchTab(name) {
 }
 
 function badge(agent) {
-  return '<span class="agent-badge agent-' + agent + '">' + agent + '</span>';
+  const safe = esc(agent);
+  return '<span class="agent-badge agent-' + safe + '">' + safe + '</span>';
 }
 
 function timeAgo(iso) {
