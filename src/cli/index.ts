@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { Command } from 'commander';
 import { CopilotIngester } from '../ingest/copilot.js';
 import { ClaudeIngester } from '../ingest/claude.js';
