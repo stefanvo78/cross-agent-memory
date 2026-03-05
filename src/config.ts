@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 
 export interface AgentMemoryConfig {
@@ -20,10 +20,24 @@ const DEFAULT_CONFIG: AgentMemoryConfig = {
 
 const CONFIG_PATH = join(homedir(), '.agent-memory', 'config.json');
 
+function validateDbPath(dbPath: string): string {
+  const normalized = resolve(dbPath);
+  const home = homedir();
+  if (!normalized.startsWith(home) && !normalized.startsWith('/tmp')) {
+    throw new Error(`Config dbPath must be within home directory or /tmp: ${normalized}`);
+  }
+  return normalized;
+}
+
 export function loadConfig(): AgentMemoryConfig {
   if (existsSync(CONFIG_PATH)) {
     const raw = JSON.parse(readFileSync(CONFIG_PATH, 'utf-8'));
-    return { ...DEFAULT_CONFIG, ...raw };
+    const merged = { ...DEFAULT_CONFIG, ...raw };
+    // Validate dbPath to prevent path traversal
+    if (raw.dbPath) {
+      merged.dbPath = validateDbPath(raw.dbPath);
+    }
+    return merged;
   }
   return { ...DEFAULT_CONFIG };
 }

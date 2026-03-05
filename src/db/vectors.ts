@@ -116,6 +116,60 @@ export class VectorStore {
     return this.db.prepare(sql).all(...params) as Array<{ id: number; distance: number }>;
   }
 
+  searchSessionsByText(query: string, limit = 10, projectId?: string): SearchResult[] {
+    // Fallback search for text-only chunks (no embedding) using LIKE
+    let sql: string;
+    let params: unknown[];
+
+    if (projectId) {
+      sql = `
+        SELECT
+          m.chunk_text,
+          m.session_id,
+          s.agent,
+          s.ended_at
+        FROM session_chunk_meta m
+        JOIN sessions s ON s.id = m.session_id
+        LEFT JOIN session_chunks sc ON sc.rowid = m.id
+        WHERE sc.rowid IS NULL
+          AND m.chunk_text LIKE ?
+          AND s.project_id = ?
+        LIMIT ?
+      `;
+      params = [`%${query}%`, projectId, limit];
+    } else {
+      sql = `
+        SELECT
+          m.chunk_text,
+          m.session_id,
+          s.agent,
+          s.ended_at
+        FROM session_chunk_meta m
+        JOIN sessions s ON s.id = m.session_id
+        LEFT JOIN session_chunks sc ON sc.rowid = m.id
+        WHERE sc.rowid IS NULL
+          AND m.chunk_text LIKE ?
+        LIMIT ?
+      `;
+      params = [`%${query}%`, limit];
+    }
+
+    const rows = this.db.prepare(sql).all(...params) as Array<{
+      chunk_text: string;
+      session_id: string;
+      agent: string;
+      ended_at: string;
+    }>;
+
+    return rows.map((r) => ({
+      sessionId: r.session_id,
+      agent: r.agent as AgentType,
+      chunkText: r.chunk_text,
+      similarityScore: 0, // text search, no similarity score
+      timestamp: r.ended_at,
+    }));
+  }
+
   sessionChunkCount(): number {
     const row = this.db.prepare('SELECT COUNT(*) as cnt FROM session_chunk_meta').get() as { cnt: number };
     return row.cnt;

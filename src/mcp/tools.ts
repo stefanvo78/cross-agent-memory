@@ -122,6 +122,17 @@ export async function searchMemory(
     } catch {
       // Vector search may fail if no vectors stored; continue with FTS results
     }
+
+    // Also search text-only chunks (stored without embeddings as fallback)
+    try {
+      const vectors = new VectorStore(deps.db);
+      const textResults = vectors.searchSessionsByText(input.query, limit, projectId);
+      for (const result of textResults) {
+        resultMap.set(`txt-${result.sessionId}-${result.chunkText.slice(0, 20)}`, result);
+      }
+    } catch {
+      // Text search fallback may fail; continue with existing results
+    }
   }
 
   const results = Array.from(resultMap.values())
