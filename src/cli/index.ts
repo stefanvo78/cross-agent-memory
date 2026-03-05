@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { CopilotIngester } from '../ingest/copilot.js';
+import { ClaudeIngester } from '../ingest/claude.js';
 import { ingestSession } from '../ingest/pipeline.js';
 import { getDb, closeDb } from '../db/connection.js';
 import { SessionStore } from '../db/sessions.js';
@@ -11,8 +12,10 @@ function getIngester(agent: string): AgentIngester {
   switch (agent) {
     case 'copilot':
       return new CopilotIngester();
+    case 'claude':
+      return new ClaudeIngester();
     default:
-      throw new Error(`Unknown agent: ${agent}. Supported: copilot`);
+      throw new Error(`Unknown agent: ${agent}. Supported: copilot, claude`);
   }
 }
 
@@ -32,12 +35,24 @@ program
       let sessionData;
 
       if (options.sessionId) {
-        // Parse a specific session by finding its directory
-        const copilot = ingester as CopilotIngester;
-        const { join } = await import('node:path');
-        const { homedir } = await import('node:os');
-        const sessionDir = join(homedir(), '.copilot', 'session-state', options.sessionId);
-        sessionData = await copilot.parseSession(sessionDir);
+        if (agent === 'claude') {
+          // Claude sessions are JSONL files in the project directory
+          const claude = ingester as ClaudeIngester;
+          const cwd = options.cwd ?? process.cwd();
+          const { join } = await import('node:path');
+          const { homedir } = await import('node:os');
+          const { encodeProjectPath } = await import('../ingest/claude.js');
+          const encoded = encodeProjectPath(cwd);
+          const sessionFile = join(homedir(), '.claude', 'projects', encoded, `${options.sessionId}.jsonl`);
+          sessionData = await claude.parseSession(sessionFile);
+        } else {
+          // Copilot sessions are directories
+          const copilot = ingester as CopilotIngester;
+          const { join } = await import('node:path');
+          const { homedir } = await import('node:os');
+          const sessionDir = join(homedir(), '.copilot', 'session-state', options.sessionId);
+          sessionData = await copilot.parseSession(sessionDir);
+        }
       } else {
         const cwd = options.cwd ?? process.cwd();
         sessionData = await ingester.parseLatestSession(cwd);
