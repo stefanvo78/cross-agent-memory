@@ -3,6 +3,8 @@ import { SessionStore } from '../db/sessions.js';
 import { VectorStore } from '../db/vectors.js';
 import { OnnxEmbeddingEngine } from '../embedding/engine.js';
 import { chunkText } from '../embedding/chunker.js';
+import { SessionExtractor } from '../summarize/extractor.js';
+import { formatHandoffSummary } from '../summarize/formatter.js';
 import type { SessionData } from '../types.js';
 
 export interface IngestResult {
@@ -16,6 +18,24 @@ export async function ingestSession(sessionData: SessionData): Promise<IngestRes
   const sessions = new SessionStore(db);
   const vectors = new VectorStore(db);
   const engine = new OnnxEmbeddingEngine();
+
+  // 0. Auto-summarize from raw transcript if available
+  if (sessionData.rawCheckpoint) {
+    const extractor = new SessionExtractor();
+    const extracted = extractor.extract(sessionData.rawCheckpoint);
+    sessionData.summary = formatHandoffSummary(extracted, sessionData.agent);
+
+    // Enrich structured fields from extraction
+    if (extracted.decisions.length > 0 && sessionData.keyDecisions.length === 0) {
+      sessionData.keyDecisions = extracted.decisions;
+    }
+    if (extracted.filesModified.length > 0 && sessionData.filesModified.length === 0) {
+      sessionData.filesModified = extracted.filesModified;
+    }
+    if (extracted.nextSteps.length > 0 && sessionData.tasksPending.length === 0) {
+      sessionData.tasksPending = extracted.nextSteps;
+    }
+  }
 
   // 1. Store session in database
   sessions.insert(sessionData);
