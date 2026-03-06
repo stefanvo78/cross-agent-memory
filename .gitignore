@@ -14,3 +14,6 @@ coverage/
 *.db-shm
 *.db-wal
 model-cache/
+docs/phases/
+docs/PLANNING.md
+docs/PROJECT.md
