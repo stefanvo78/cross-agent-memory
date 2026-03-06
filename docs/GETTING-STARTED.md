@@ -208,11 +208,11 @@ Or manually add to your Claude MCP configuration.
 ### Verify the MCP server starts
 
 ```bash
-# Test that the server starts without errors (Ctrl+C to stop)
+# Quick smoke test — verify it starts without errors, then Ctrl+C to stop
 cross-agent-memory serve --debug
 ```
 
-You should see it waiting for MCP connections on stdin/stdout.
+You should see it waiting for MCP connections on stdin/stdout. **Press Ctrl+C to stop it.** You don't need to keep it running — the agents will launch it automatically as a child process when they need it (that's what the configs above are for).
 
 ✅ **Checkpoint:** The MCP server is configured for both agents.
 
