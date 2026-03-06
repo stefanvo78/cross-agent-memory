@@ -291,12 +291,13 @@ program
 program
   .command('push')
   .description('Export sessions and knowledge to .agent-memory/ for git sharing')
-  .option('--cwd <path>', 'Project directory', process.cwd())
-  .action(async (options: { cwd: string }) => {
+  .option('--cwd <path>', 'Project directory')
+  .action(async (options: { cwd?: string }) => {
     try {
+      const cwd = options.cwd ?? process.cwd();
       const { exportToRepo } = await import('../sync/exporter.js');
       const db = getDb();
-      const result = exportToRepo(db, options.cwd);
+      const result = exportToRepo(db, cwd);
       closeDb();
       console.log(`✓ Exported to .agent-memory/`);
       console.log(`  Sessions:  ${result.sessionsExported} new`);
@@ -315,12 +316,13 @@ program
 program
   .command('pull')
   .description('Import sessions and knowledge from .agent-memory/ into local DB')
-  .option('--cwd <path>', 'Project directory', process.cwd())
-  .action(async (options: { cwd: string }) => {
+  .option('--cwd <path>', 'Project directory')
+  .action(async (options: { cwd?: string }) => {
     try {
+      const cwd = options.cwd ?? process.cwd();
       const { importFromRepo } = await import('../sync/importer.js');
       const db = getDb();
-      const result = importFromRepo(db, options.cwd);
+      const result = importFromRepo(db, cwd);
       closeDb();
       console.log(`✓ Imported from .agent-memory/`);
       console.log(`  Sessions:  ${result.sessionsImported} new`);
@@ -337,17 +339,18 @@ program
 program
   .command('sync')
   .description('Pull from .agent-memory/, then push (bidirectional sync)')
-  .option('--cwd <path>', 'Project directory', process.cwd())
-  .action(async (options: { cwd: string }) => {
+  .option('--cwd <path>', 'Project directory')
+  .action(async (options: { cwd?: string }) => {
     try {
+      const cwd = options.cwd ?? process.cwd();
       const { importFromRepo } = await import('../sync/importer.js');
       const { exportToRepo } = await import('../sync/exporter.js');
       const db = getDb();
 
-      const imported = importFromRepo(db, options.cwd);
+      const imported = importFromRepo(db, cwd);
       console.log(`↓ Imported: ${imported.sessionsImported} sessions, ${imported.knowledgeImported} knowledge`);
 
-      const exported = exportToRepo(db, options.cwd);
+      const exported = exportToRepo(db, cwd);
       console.log(`↑ Exported: ${exported.sessionsExported} sessions, ${exported.knowledgeExported} knowledge`);
 
       closeDb();
