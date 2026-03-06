@@ -376,8 +376,11 @@ describe('GeminiIngester', () => {
       const newerPath = join(chatsDir, 'session-2025-01-02-bbb.json');
 
       writeFileSync(olderPath, makeSampleSession({ sessionId: 'older' }));
-      // Brief delay to ensure different mtime
       writeFileSync(newerPath, makeSampleSession({ sessionId: 'newer' }));
+      // Ensure olderPath has a definitively older mtime (CI can write both in same ms)
+      const { utimesSync } = await import('node:fs');
+      const past = new Date(Date.now() - 60000);
+      utimesSync(olderPath, past, past);
 
       const result = await ingester.findLatestSession(projectPath);
 
