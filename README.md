@@ -44,9 +44,16 @@ cross-agent-memory status
 
 # Launch the web dashboard
 cross-agent-memory dashboard
+
+# Share context with your team via git
+cross-agent-memory push     # Export sessions → .agent-memory/
+cross-agent-memory pull     # Import .agent-memory/ → local DB
+cross-agent-memory sync     # Bidirectional (pull + push)
 ```
 
 ## How It Works
+
+### Solo (cross-agent)
 
 ```
 Agent A session ends → Stop Hook fires → Ingest script reads session state
@@ -54,6 +61,22 @@ Agent A session ends → Stop Hook fires → Ingest script reads session state
 
 Agent B starts → MCP Server is running → Agent calls get_handoff()
 → Gets: "Last session (Copilot) completed X. Remaining: Y, Z."
+```
+
+### Team (cross-developer)
+
+```
+Dev A: session ends → local DB → push → .agent-memory/ → git commit + push
+Dev B: git pull → pull → local DB → get_handoff() → picks up Dev A's context
+```
+
+The `.agent-memory/` directory in your repo contains:
+```
+.agent-memory/
+├── HANDOFF.md              # Human + agent readable handoff document
+├── sessions/               # Structured summaries (no raw transcripts)
+├── knowledge/              # Shared decisions, patterns, gotchas
+└── config.json             # Team sync settings
 ```
 
 ## MCP Tools
@@ -93,7 +116,7 @@ Config file at `~/.agent-memory/config.json`:
 - **Database:** SQLite + [sqlite-vec](https://github.com/asg017/sqlite-vec) (vector search + FTS5)
 - **Embeddings:** Local ONNX (all-MiniLM-L6-v2, 384 dims, ~23MB, no API key)
 - **Protocol:** [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
-- **Testing:** Vitest (274 tests)
+- **Testing:** Vitest (310 tests)
 - **CI:** GitHub Actions (test + build + typecheck on Node 20/22)
 
 ## Development
