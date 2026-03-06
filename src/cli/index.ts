@@ -288,4 +288,77 @@ program
     }
   });
 
+program
+  .command('push')
+  .description('Export sessions and knowledge to .agent-memory/ for git sharing')
+  .option('--cwd <path>', 'Project directory', process.cwd())
+  .action(async (options: { cwd: string }) => {
+    try {
+      const { exportToRepo } = await import('../sync/exporter.js');
+      const db = getDb();
+      const result = exportToRepo(db, options.cwd);
+      closeDb();
+      console.log(`✓ Exported to .agent-memory/`);
+      console.log(`  Sessions:  ${result.sessionsExported} new`);
+      console.log(`  Knowledge: ${result.knowledgeExported} entries`);
+      console.log(`  HANDOFF.md updated`);
+      console.log(`\nRun 'git add .agent-memory && git commit' to share with your team.`);
+    } catch (error) {
+      if (program.opts().verbose) console.error(error);
+      else console.error(`Error: ${error instanceof Error ? error.message : error}`);
+      process.exit(1);
+    } finally {
+      closeDb();
+    }
+  });
+
+program
+  .command('pull')
+  .description('Import sessions and knowledge from .agent-memory/ into local DB')
+  .option('--cwd <path>', 'Project directory', process.cwd())
+  .action(async (options: { cwd: string }) => {
+    try {
+      const { importFromRepo } = await import('../sync/importer.js');
+      const db = getDb();
+      const result = importFromRepo(db, options.cwd);
+      closeDb();
+      console.log(`✓ Imported from .agent-memory/`);
+      console.log(`  Sessions:  ${result.sessionsImported} new`);
+      console.log(`  Knowledge: ${result.knowledgeImported} new entries`);
+    } catch (error) {
+      if (program.opts().verbose) console.error(error);
+      else console.error(`Error: ${error instanceof Error ? error.message : error}`);
+      process.exit(1);
+    } finally {
+      closeDb();
+    }
+  });
+
+program
+  .command('sync')
+  .description('Pull from .agent-memory/, then push (bidirectional sync)')
+  .option('--cwd <path>', 'Project directory', process.cwd())
+  .action(async (options: { cwd: string }) => {
+    try {
+      const { importFromRepo } = await import('../sync/importer.js');
+      const { exportToRepo } = await import('../sync/exporter.js');
+      const db = getDb();
+
+      const imported = importFromRepo(db, options.cwd);
+      console.log(`↓ Imported: ${imported.sessionsImported} sessions, ${imported.knowledgeImported} knowledge`);
+
+      const exported = exportToRepo(db, options.cwd);
+      console.log(`↑ Exported: ${exported.sessionsExported} sessions, ${exported.knowledgeExported} knowledge`);
+
+      closeDb();
+      console.log(`✓ Sync complete. HANDOFF.md updated.`);
+    } catch (error) {
+      if (program.opts().verbose) console.error(error);
+      else console.error(`Error: ${error instanceof Error ? error.message : error}`);
+      process.exit(1);
+    } finally {
+      closeDb();
+    }
+  });
+
 program.parse();
