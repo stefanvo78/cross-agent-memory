@@ -332,6 +332,11 @@ describe('Dashboard server', () => {
       expect(res.headers['Access-Control-Allow-Origin']).toBe('http://localhost:3847');
     });
 
+    it('sets CORS header for 127.0.0.1 origin', async () => {
+      const res = await requestWithOrigin(handler, 'GET', '/api/stats', 'http://127.0.0.1:3847');
+      expect(res.headers['Access-Control-Allow-Origin']).toBe('http://127.0.0.1:3847');
+    });
+
     it('rejects CORS for non-localhost origin', async () => {
       const res = await requestWithOrigin(handler, 'GET', '/api/stats', 'https://evil.com');
       expect(res.headers['Access-Control-Allow-Origin']).toBeUndefined();
