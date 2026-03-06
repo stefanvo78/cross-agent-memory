@@ -36,8 +36,11 @@ export function createRequestHandler(deps: DashboardDeps) {
   return (req: IncomingMessage, res: ServerResponse) => {
     const { pathname, searchParams } = parseUrl(req.url ?? '/');
 
-    // CORS headers for local dev
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // CORS: restrict to localhost only (hostname, IPv4, IPv6)
+    const origin = req.headers.origin ?? '';
+    if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
 
     if (req.method === 'GET' && pathname === '/') {
       return html(res, DASHBOARD_HTML);

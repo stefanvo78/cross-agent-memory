@@ -41,6 +41,9 @@ export function loadSyncConfig(projectPath: string): SyncConfig {
   const configPath = join(getAgentMemoryDir(projectPath), 'config.json');
   if (existsSync(configPath)) {
     const raw = JSON.parse(readFileSync(configPath, 'utf-8'));
+    delete raw.__proto__;
+    delete raw.constructor;
+    delete raw.prototype;
     return { ...DEFAULT_CONFIG, ...raw };
   }
   return { ...DEFAULT_CONFIG };

@@ -36,6 +36,9 @@ describe('Config', () => {
   function loadConfig(): AgentMemoryConfig {
     if (existsSync(configPath)) {
       const raw = JSON.parse(readFileSync(configPath, 'utf-8'));
+      delete raw.__proto__;
+      delete raw.constructor;
+      delete raw.prototype;
       return { ...DEFAULT_CONFIG, ...raw };
     }
     return { ...DEFAULT_CONFIG };
@@ -108,5 +111,12 @@ describe('Config', () => {
     saveConfig({ logLevel: 'normal' });
     expect(existsSync(testDir)).toBe(true);
     expect(existsSync(configPath)).toBe(true);
+  });
+
+  it('sanitizes __proto__ to prevent prototype pollution', () => {
+    writeFileSync(configPath, '{"__proto__": {"polluted": true}, "logLevel": "quiet"}');
+    const config = loadConfig();
+    expect((({} as Record<string, unknown>).polluted)).toBeUndefined();
+    expect(config.logLevel).toBe('quiet');
   });
 });

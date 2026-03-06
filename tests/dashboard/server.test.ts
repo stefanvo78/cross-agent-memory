@@ -74,6 +74,44 @@ function request(
   });
 }
 
+function requestWithOrigin(
+  handler: (req: IncomingMessage, res: ServerResponse) => void,
+  method: string,
+  url: string,
+  origin: string,
+): Promise<{ status: number; headers: Record<string, string>; body: string }> {
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = [];
+    const headers: Record<string, string> = {};
+    let status = 200;
+
+    const req = {
+      method,
+      url,
+      headers: { origin },
+    } as unknown as IncomingMessage;
+
+    const res = {
+      writeHead(code: number, hdrs?: Record<string, string>) {
+        status = code;
+        if (hdrs) Object.assign(headers, hdrs);
+      },
+      setHeader(name: string, value: string) {
+        headers[name] = value;
+      },
+      end(data?: string | Buffer) {
+        if (data) chunks.push(Buffer.from(data));
+        resolve({ status, headers, body: Buffer.concat(chunks).toString() });
+      },
+      write(data: string | Buffer) {
+        chunks.push(Buffer.from(data));
+      },
+    } as unknown as ServerResponse;
+
+    handler(req, res);
+  });
+}
+
 describe('Dashboard server', () => {
   let db: Database.Database;
   let handler: (req: IncomingMessage, res: ServerResponse) => void;
@@ -284,9 +322,24 @@ describe('Dashboard server', () => {
   });
 
   describe('CORS headers', () => {
-    it('sets Access-Control-Allow-Origin header', async () => {
+    it('does not set CORS header when no origin is sent', async () => {
       const res = await request(handler, 'GET', '/api/stats');
-      expect(res.headers['Access-Control-Allow-Origin']).toBe('*');
+      expect(res.headers['Access-Control-Allow-Origin']).toBeUndefined();
+    });
+
+    it('sets CORS header for localhost origin', async () => {
+      const res = await requestWithOrigin(handler, 'GET', '/api/stats', 'http://localhost:3847');
+      expect(res.headers['Access-Control-Allow-Origin']).toBe('http://localhost:3847');
+    });
+
+    it('sets CORS header for 127.0.0.1 origin', async () => {
+      const res = await requestWithOrigin(handler, 'GET', '/api/stats', 'http://127.0.0.1:3847');
+      expect(res.headers['Access-Control-Allow-Origin']).toBe('http://127.0.0.1:3847');
+    });
+
+    it('rejects CORS for non-localhost origin', async () => {
+      const res = await requestWithOrigin(handler, 'GET', '/api/stats', 'https://evil.com');
+      expect(res.headers['Access-Control-Allow-Origin']).toBeUndefined();
     });
   });
 });
