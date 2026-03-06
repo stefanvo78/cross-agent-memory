@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative, isAbsolute, normalize } from 'node:path';
 import { execSync } from 'node:child_process';
 import type Database from 'better-sqlite3';
 import { SessionStore } from '../db/sessions.js';
@@ -86,7 +86,7 @@ export function exportToRepo(db: Database.Database, projectPath: string): { sess
       summary: session.summary,
       tasksCompleted: session.tasksCompleted,
       tasksPending: session.tasksPending,
-      filesModified: session.filesModified,
+      filesModified: sanitizeFilePaths(session.filesModified, projectPath),
       keyDecisions: session.keyDecisions,
     };
 
@@ -146,4 +146,22 @@ function getGitUserName(cwd: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** Sanitize file paths: make relative to project root, exclude paths outside project */
+function sanitizeFilePaths(paths: string[], projectPath: string): string[] {
+  return paths
+    .map(p => {
+      if (isAbsolute(p)) {
+        const rel = relative(projectPath, p);
+        // If the relative path starts with '..', it's outside the project — exclude
+        if (rel.startsWith('..')) return null;
+        return rel;
+      }
+      // Normalize relative paths and reject traversals
+      const normalized = normalize(p);
+      if (normalized.startsWith('..')) return null;
+      return normalized;
+    })
+    .filter((p): p is string => p !== null);
 }
