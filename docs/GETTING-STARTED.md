@@ -92,6 +92,19 @@ cd ~/test-agent-handoff
 git init
 ```
 
+### Create a GitHub remote (needed for step 11: team sync)
+
+```bash
+# Create a private repo on GitHub and add it as remote
+gh repo create test-agent-handoff --private --source=. --remote=origin
+```
+
+Or manually:
+```bash
+# 1. Create the repo on github.com, then:
+git remote add origin https://github.com/<your-username>/test-agent-handoff.git
+```
+
 Create a simple starter file:
 
 ```bash
@@ -411,6 +424,11 @@ cat .agent-memory/config.json
 ```bash
 git add .agent-memory
 git commit -m "chore: update agent memory handoff"
+
+# First push (if you haven't pushed to the remote yet):
+git push -u origin main
+
+# Subsequent pushes:
 git push
 ```
 
