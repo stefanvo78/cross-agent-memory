@@ -32,6 +32,9 @@ function validateDbPath(dbPath: string): string {
 export function loadConfig(): AgentMemoryConfig {
   if (existsSync(CONFIG_PATH)) {
     const raw = JSON.parse(readFileSync(CONFIG_PATH, 'utf-8'));
+    delete raw.__proto__;
+    delete raw.constructor;
+    delete raw.prototype;
     const merged = { ...DEFAULT_CONFIG, ...raw };
     // Validate dbPath to prevent path traversal
     if (raw.dbPath) {

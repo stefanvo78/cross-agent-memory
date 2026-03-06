@@ -219,7 +219,7 @@ program
                 hooks: [
                   {
                     type: 'command',
-                    command: 'cross-agent-memory ingest claude --cwd ' + projectDir,
+                    command: `cross-agent-memory ingest claude --cwd '${projectDir.replace(/'/g, "'\\''")}'`,
                   },
                 ],
               },
@@ -240,7 +240,7 @@ program
           }
           (geminiSettings as Record<string, unknown>).hooks = {
             SessionEnd: {
-              command: 'cross-agent-memory ingest gemini --cwd ' + projectDir,
+              command: `cross-agent-memory ingest gemini --cwd '${projectDir.replace(/'/g, "'\\''")}'`,
             },
           };
           writeFileSync(geminiSettingsPath, JSON.stringify(geminiSettings, null, 2) + '\n');

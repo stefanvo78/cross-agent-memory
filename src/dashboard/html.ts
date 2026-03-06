@@ -138,7 +138,7 @@ async function loadSessions() {
     return;
   }
   tbody.innerHTML = sessions.map(function(s) {
-    return '<tr style="cursor:pointer" onclick="showSession(\\'' + esc(s.id) + '\\')">' +
+    return '<tr style="cursor:pointer" data-id="' + esc(s.id) + '" onclick="showSession(this.dataset.id)">' +
       '<td>' + badge(s.agent) + '</td>' +
       '<td>' + esc(s.projectId) + '</td>' +
       '<td>' + esc((s.summary || '').slice(0, 120)) + '</td>' +
