@@ -44,16 +44,11 @@ cross-agent-memory status
 
 # Launch the web dashboard
 cross-agent-memory dashboard
-
-# Share context with your team via git
-cross-agent-memory push     # Export sessions → .agent-memory/
-cross-agent-memory pull     # Import .agent-memory/ → local DB
-cross-agent-memory sync     # Bidirectional (pull + push)
 ```
 
-## How It Works
+> 📖 **New to cross-agent-memory?** Follow the step-by-step [Getting Started Guide](docs/GETTING-STARTED.md) for a complete walkthrough with hands-on test scenarios.
 
-### Solo (cross-agent)
+## How It Works
 
 ```
 Agent A session ends → Stop Hook fires → Ingest script reads session state
@@ -61,22 +56,6 @@ Agent A session ends → Stop Hook fires → Ingest script reads session state
 
 Agent B starts → MCP Server is running → Agent calls get_handoff()
 → Gets: "Last session (Copilot) completed X. Remaining: Y, Z."
-```
-
-### Team (cross-developer)
-
-```
-Dev A: session ends → local DB → push → .agent-memory/ → git commit + push
-Dev B: git pull → pull → local DB → get_handoff() → picks up Dev A's context
-```
-
-The `.agent-memory/` directory in your repo contains:
-```
-.agent-memory/
-├── HANDOFF.md              # Human + agent readable handoff document
-├── sessions/               # Structured summaries (no raw transcripts)
-├── knowledge/              # Shared decisions, patterns, gotchas
-└── config.json             # Team sync settings
 ```
 
 ## MCP Tools
@@ -87,6 +66,75 @@ The `.agent-memory/` directory in your repo contains:
 | `search_memory` | Semantic + keyword search across all sessions and knowledge |
 | `store_knowledge` | Save important decisions, patterns, or gotchas |
 | `get_project_context` | Get all knowledge and recent sessions for a project |
+
+## Git Sync — Team Sharing
+
+Cross-agent-memory includes git-like commands to share session context across team members through your existing git workflow. No extra infrastructure needed — context travels with your code.
+
+### Commands
+
+```bash
+# Export local sessions and knowledge to .agent-memory/ in your repo
+cross-agent-memory push
+
+# Import .agent-memory/ from repo into your local database
+cross-agent-memory pull
+
+# Bidirectional sync (pull first, then push)
+cross-agent-memory sync
+```
+
+### How It Works
+
+```
+Dev A: agent session ends → local DB → push → .agent-memory/ → git commit + push
+Dev B: git pull → pull → local DB → get_handoff() → picks up Dev A's context
+```
+
+The `push` command exports structured session summaries (no raw transcripts, no embeddings, no local paths) into a `.agent-memory/` directory in your repo:
+
+```
+.agent-memory/
+├── HANDOFF.md              # Human + agent readable handoff document
+├── sessions/               # Structured summaries per session
+│   └── <session-id>.json
+├── knowledge/              # Shared decisions, patterns, gotchas
+│   └── entries.json
+└── config.json             # Team sync settings
+```
+
+### HANDOFF.md
+
+The `HANDOFF.md` file is the centerpiece — a markdown document that both humans and agents can read. It includes:
+
+- **Latest session summary** — what was done, what's pending
+- **Key decisions** — architectural choices, trade-offs
+- **Files modified** — what changed and where
+- **Session history table** — chronological overview of all sessions
+- **Knowledge entries** — team-shared patterns, gotchas, conventions
+
+### Typical Workflow
+
+```bash
+# You finish a coding session — the stop hook fires automatically
+# Then share your progress:
+cross-agent-memory push
+git add .agent-memory/
+git commit -m "Update agent memory with session context"
+git push
+
+# Your teammate pulls and picks up where you left off:
+git pull
+cross-agent-memory pull
+# Their next agent session will automatically get your context via MCP
+```
+
+### Privacy & Safety
+
+- **No raw transcripts** — only structured summaries are exported
+- **No embeddings** — vectors stay in your local DB
+- **No absolute paths** — file paths are sanitized to relative paths
+- **No credentials** — config files and environment variables are never exported
 
 ## Supported Agents
 
