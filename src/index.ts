@@ -17,4 +17,8 @@ export { getHandoff, searchMemory, storeKnowledge, getProjectContext } from './m
 export { loadConfig, saveConfig } from './config.js';
 export type { AgentMemoryConfig } from './config.js';
 export { startDashboard, createRequestHandler } from './dashboard/server.js';
+export { exportToRepo, loadSyncConfig, getAgentMemoryDir } from './sync/exporter.js';
+export type { ExportedSession, SyncConfig } from './sync/exporter.js';
+export { importFromRepo } from './sync/importer.js';
+export { generateHandoff } from './sync/handoff.js';
 export type * from './types.js';
