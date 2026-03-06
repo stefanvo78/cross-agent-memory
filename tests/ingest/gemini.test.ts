@@ -449,7 +449,12 @@ describe('GeminiIngester', () => {
       mkdirSync(dir1, { recursive: true });
       mkdirSync(dir2, { recursive: true });
 
-      // Write a file in dir2 to make it more recent
+      // Set dir1 mtime to the past so dir2 is definitively more recent
+      const { utimesSync } = await import('node:fs');
+      const past = new Date(Date.now() - 60000);
+      utimesSync(dir1, past, past);
+
+      // Write a file in dir2 to ensure its mtime is updated
       writeFileSync(join(dir2, 'session.json'), makeSampleSession());
 
       const result = await ingester.findChatsDir('/unmatched/path');
