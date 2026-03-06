@@ -214,9 +214,16 @@ program
             settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
           }
           (settings as Record<string, unknown>).hooks = {
-            SessionEnd: {
-              command: 'cross-agent-memory ingest claude --cwd ' + projectDir,
-            },
+            SessionEnd: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: 'cross-agent-memory ingest claude --cwd ' + projectDir,
+                  },
+                ],
+              },
+            ],
           };
           writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
           console.log(`✓ Updated ${join('.claude', 'settings.json')}`);
